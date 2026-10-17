@@ -1,0 +1,20 @@
+{
+  "name": "aura-can-drinks",
+  "version": "1.0.0",
+  "description": "AURA Sparkling Water immersive 3D experience recreation",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "threejs",
+    "3d",
+    "interactive",
+    "webgl",
+    "aura"
+  ],
+  "author": "",
+  "license": "MIT"
+}
