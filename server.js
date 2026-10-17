@@ -22,6 +22,31 @@ const MIME_TYPES = {
   '.ttf': 'font/ttf'
 };
 
+function getSafeFilePath(reqUrl) {
+  let reqPath = decodeURI(reqUrl.split('?')[0]);
+  if (reqPath === '/' || reqPath === '') {
+    reqPath = '/index.html';
+  }
+
+  // Remove leading slashes so path.resolve joins relative to baseDir
+  const cleanPath = reqPath.replace(/^\/+/, '');
+
+  // Search candidate root directories (handles both local dev and serverless runtime environments)
+  const candidateDirs = [
+    path.resolve(__dirname),
+    path.resolve(process.cwd())
+  ];
+
+  for (const baseDir of candidateDirs) {
+    const fullPath = path.resolve(baseDir, cleanPath);
+    if ((fullPath === baseDir || fullPath.startsWith(baseDir + path.sep)) && fs.existsSync(fullPath)) {
+      return fullPath;
+    }
+  }
+
+  return null;
+}
+
 const server = http.createServer((req, res) => {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -34,22 +59,18 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  let reqPath = decodeURI(req.url.split('?')[0]);
-  if (reqPath === '/' || reqPath === '') {
-    reqPath = '/index.html';
-  }
+  const filePath = getSafeFilePath(req.url);
 
-  const filePath = path.join(__dirname, reqPath);
-
-  // Security check: ensure path is within __dirname
-  if (!filePath.startsWith(__dirname)) {
-    res.writeHead(403);
-    res.end('Forbidden');
+  if (!filePath) {
+    const reqPath = decodeURI(req.url.split('?')[0]);
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('404 Not Found: ' + reqPath);
     return;
   }
 
   fs.stat(filePath, (err, stats) => {
     if (err || !stats.isFile()) {
+      const reqPath = decodeURI(req.url.split('?')[0]);
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('404 Not Found: ' + reqPath);
       return;
@@ -69,6 +90,10 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}/`);
-});
+if (require.main === module || !process.env.VERCEL) {
+  server.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}/`);
+  });
+}
+
+module.exports = server;
